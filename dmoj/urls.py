@@ -273,6 +273,10 @@ urlpatterns = [
         path('judges', api.api_v2.APIJudgeList.as_view()),
     ])),
 
+    path('api/v3/', include('apiv3.urls')),
+    path('api/v3/auth/', include('djoser.urls')),
+    path('api/v3/auth/', include('djoser.urls.jwt')),
+
     path('blog/', paged_list_view(blog.PostList, 'blog_post_list')),
     path('post/<int:id>-<slug:slug>', blog.PostView.as_view(), name='blog_post'),
 

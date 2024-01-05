@@ -40,3 +40,13 @@ django-admin-sortable2<2
 icalendar
 # This is a celery dependency whose latest major version is breaking everything.
 importlib-metadata<5
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+djoser
+markdown
+mysqlclient==2.1.0
+django-redis
+websocket-client
+wheel
+uwsgi
