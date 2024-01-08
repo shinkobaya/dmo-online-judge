@@ -142,7 +142,14 @@ class SubmissionStatus(generics.GenericAPIView):
 
             # These are individual cases.
             if batch['id'] is None:
-                cases.extend(batch_cases)
+                # cases.extend(batch_cases)
+                cases.append({
+                    'type': 'batch',
+                    'batch_id': 0,
+                    'cases': batch_cases,
+                    'points': batch_cases[0]['points'],
+                    'total': batch_cases[0]['total'],
+                })
             # This is one batch.
             else:
                 cases.append({
@@ -175,21 +182,25 @@ class SubmissionStatus(generics.GenericAPIView):
 class UserDetail(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, pk, format=None):
-        pid = self.kwargs["pk"]
-        profile = Profile.objects.get(username=pid)
+    def get(self, request, format=None):
 
-        solved_problems = list(
-            Submission.objects
-            .filter(
+        profile = Profile.objects.get(user=self.request.user)
+
+        qset = Submission.objects.filter(
                 result='AC',
                 user=profile,
                 problem__is_public=True,
                 problem__is_organization_private=False,
-            )
-            .values('problem').distinct()
-            .values_list('problem__code', flat=True),
-        )
+            ).order_by("problem")
+
+        p = -1
+        queryset = []
+        for i in qset:
+            if p != i.problem:
+                p = i.problem
+                queryset.append(i)
+
+        solved_problems = SubmissionSerializer(queryset, many=True)
 
         last_rating = profile.ratings.order_by('-contest__end_time').first()
 
@@ -200,7 +211,7 @@ class UserDetail(generics.GenericAPIView):
                 user=profile,
                 virtual=ContestParticipation.LIVE,
                 contest__in=Contest.get_visible_contests(self.request.user),
-                contest__end_time__lt=self._now,
+                contest__end_time__lt=timezone.now(),
             )
             .order_by('contest__end_time')
         )
@@ -222,7 +233,7 @@ class UserDetail(generics.GenericAPIView):
             'points': profile.points,
             'performance_points': profile.performance_points,
             'problem_count': profile.problem_count,
-            'solved_problems': solved_problems,
+            'solved_problems': solved_problems.data,
             'rank': profile.display_rank,
             'rating': last_rating.rating if last_rating is not None else None,
             'organizations': list(profile.organizations.values_list('id', flat=True)),

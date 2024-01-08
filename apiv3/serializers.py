@@ -25,8 +25,8 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Submission
-        fields = ('id', 'language', 'problem', )
-        read_only_fields = ['id']
+        fields = ('id', 'language', 'problem', 'judged_date')
+        read_only_fields = ['id', 'judged_date']
 
 class ProfileSerializer(serializers.ModelSerializer):
     """
