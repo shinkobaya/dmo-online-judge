@@ -77,7 +77,7 @@ class ContestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Contest
-        fields = ('pk', 'key', 'name', 'problems')
+        fields = ('pk', 'key', 'name', 'problems', 'description')
 
 class SubmissionTestcaseSerializer(serializers.ModelSerializer):
 
