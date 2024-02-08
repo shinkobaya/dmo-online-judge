@@ -24,14 +24,15 @@ from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 class AuthRegister(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
     queryset = Profile.objects.all()
-    serializer_class = ProfileSerializer
+    serializer_class = UserSerializer
 
     @transaction.atomic
     def post(self, request, format=None):
-        serializer = ProfileSerializer(data=request.data)
+        serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserInfoViewSet(viewsets.ModelViewSet):
@@ -83,7 +84,7 @@ class SubmitData(generics.GenericAPIView, ProblemMixin, TitleMixin):
         #---
         if (
             not self.request.user.has_perm('judge.spam_submission') and
-            Submission.objects.filter(user=self.request.user, rejudged_date__isnull=True)
+            Submission.objects.filter(user=self.request.profile, rejudged_date__isnull=True)
                               .exclude(status__in=['D', 'IE', 'CE', 'AB']).count() >= settings.DMOJ_SUBMISSION_LIMIT
         ):
             return Response(data={"status": 'You submitted too many submissions.'},
@@ -100,10 +101,11 @@ class SubmitData(generics.GenericAPIView, ProblemMixin, TitleMixin):
 
         with transaction.atomic():
             serializer = SubmissionSerializer(data=request.data)
+            # print(request.user.profile)
             # self.new_submission.user = request.user.id
             # self.new_submission.save()
             if serializer.is_valid():
-                self.new_submission = serializer.save(user_id=request.user.id)
+                self.new_submission = serializer.save(user_id=request.user.profile.id)
                 source = SubmissionSource(submission=self.new_submission, source=request.data['source'])
                 source.save()
                 # Save a query.

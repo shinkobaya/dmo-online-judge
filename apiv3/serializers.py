@@ -65,19 +65,33 @@ class ProfileSerializer(serializers.ModelSerializer):
         return profile
         # return Profile.objects.create_user(request_data=validated_data)
 
+class ProblemTypeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ProblemType
+        fields = ('name', 'full_name')
+
 class ProblemSerializer(serializers.ModelSerializer):
     allowed_languages = LanguageSerializer(read_only=True, many=True)
+    types = ProblemTypeSerializer(read_only=True, many=True)
 
     class Meta:
         model = Problem
-        fields = ('pk', 'code', 'name', 'description', 'allowed_languages')
+        fields = ('pk', 'code', 'name', 'description', 'allowed_languages', 'types')
+
+class TagSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ContestTag
+        fields = ('name', 'color', 'description')
 
 class ContestSerializer(serializers.ModelSerializer):
     problems = ProblemSerializer(read_only=True, many=True)
+    tags = TagSerializer(read_only=True, many=True)
 
     class Meta:
         model = Contest
-        fields = ('pk', 'key', 'name', 'problems', 'description')
+        fields = ('pk', 'key', 'name', 'problems', 'description', 'tags')
 
 class SubmissionTestcaseSerializer(serializers.ModelSerializer):
 
@@ -85,3 +99,32 @@ class SubmissionTestcaseSerializer(serializers.ModelSerializer):
         model = SubmissionTestCase
         fields = ('case', 'status', 'time', 'memory', 'points',
                   'total', 'batch', 'feedback', 'extended_feedback', 'output')
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'password', )
+        # レスポンスにパスワードを含めないようにする
+        extra_kwargs = {'password': {'write_only': True}}
+        read_only_fields = ['id', ]
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+
+        profile, _ = Profile.objects.get_or_create(user=user, defaults={
+            'language': Language.get_default_language(),
+        })
+
+        # profile.timezone = validated_data['timezone']
+        # profile.language = validated_data['language']
+        # profile.organizations.add(*validated_data['organizations'])
+        profile.save()
+
+        # if newsletter_id is not None and cleaned_data['newsletter']:
+        #     Subscription(user=user, newsletter_id=newsletter_id, subscribed=True).save()
+
+        return user

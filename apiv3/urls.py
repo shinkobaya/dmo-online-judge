@@ -11,6 +11,7 @@ router.register('judges', views.JudgeViewSet, basename="Judge")
 
 app_name = 'apiv3'
 urlpatterns = [
+    path('register/', views.AuthRegister.as_view()),
     path('submit/', views.SubmitData.as_view()),
     path('submitstatus/<int:pk>/', views.SubmissionStatus.as_view()),
     path('userstatus/', views.UserDetail.as_view()),
