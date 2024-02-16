@@ -574,8 +574,9 @@ STATICFILES_FINDERS = (
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'resources'),
 ]
-STATIC_URL = '/static/'
-STATIC_ROOT = '/var/www/static'
+STATIC_URL = '/static2/'
+# STATIC_ROOT = '/var/www/static'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Define a cache
 CACHES = {
