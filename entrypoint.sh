@@ -16,13 +16,13 @@ done
 
 if [ ! -e /var/www/static ]; then
     sudo mkdir -p /var/www/static
-    sudo chown -R ubuntu:www-data /var/www/static
     ./make_style.sh
-    python3 manage.py collectstatic
-    python3 manage.py compilemessages --locale en
-    python3 manage.py compilemessages --locale ja
-    python3 manage.py compilejsi18n --locale en
-    python3 manage.py compilejsi18n --locale ja
+    sudo python3 manage.py collectstatic
+    sudo python3 manage.py compilemessages --locale en
+    sudo python3 manage.py compilemessages --locale ja
+    sudo python3 manage.py compilejsi18n --locale en
+    sudo python3 manage.py compilejsi18n --locale ja
+    sudo chown -R ubuntu:www-data /var/www/static
 
     python3 manage.py migrate
     python3 manage.py loaddata navbar
