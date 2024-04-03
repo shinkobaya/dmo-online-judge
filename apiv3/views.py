@@ -72,6 +72,30 @@ class UserInfoViewSet(viewsets.ModelViewSet):
     #     projmember.delete()
     #     return Response({"status": "deleted"}, status=status.HTTP_200_OK)
 
+class UserPassword(generics.GenericAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        print(request.data)
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        if not user.check_password(
+            serializer.validated_data["oldPassword"]
+        ):
+            return Response(
+                data={"msg": "現在のパスワードが違います。"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(serializer.validated_data["newPassword"])
+        user.save()
+        # update_session_auth_hash
+        return Response(status=status.HTTP_200_OK)
+
 class SubmitData(generics.GenericAPIView, ProblemMixin, TitleMixin):
     # queryset = User.objects.all()
     # serializer_class = UserSerializer

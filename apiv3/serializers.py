@@ -5,6 +5,9 @@ from judge.models import (
     Submission, SubmissionTestCase
 )
 from django.utils import timezone
+from django.contrib.auth.password_validation import get_default_password_validators
+from django.core.exceptions import ValidationError
+
 User = get_user_model()
 
 class LanguageSerializer(serializers.ModelSerializer):
@@ -128,3 +131,62 @@ class UserSerializer(serializers.ModelSerializer):
         #     Subscription(user=user, newsletter_id=newsletter_id, subscribed=True).save()
 
         return user
+
+def validate_password(password, user=None, password_validators=None):
+    """
+    Validate that the password meets all validator requirements.
+
+    If the password is valid, return ``None``.
+    If the password is invalid, raise ValidationError with all error messages.
+    """
+    errors = []
+    if password_validators is None:
+        password_validators = get_default_password_validators()
+    for validator in password_validators:
+        try:
+            validator.validate(password, user)
+        except ValidationError as error:
+            errors.append(error)
+    if errors:
+        raise ValidationError(errors)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """パスワード変更用Serializer"""
+
+    oldPassword = serializers.CharField(max_length=255)
+    """現在のパスワード"""
+    newPassword = serializers.CharField(max_length=255)
+    """新規パスワード"""
+    confirmPassword = serializers.CharField(max_length=255)
+    """新規パスワード再確認"""
+
+    def validate(self, data):
+        if data["newPassword"] != data["confirmPassword"]:
+            raise serializers.ValidationError("新規パスワードと確認パスワードが違います")
+        validate_password(data["newPassword"])
+        return data
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    """パスワード再設定用シリアライザ"""
+
+    token = serializers.CharField(max_length=255)
+    """パスワード再設定メールURL用トークン"""
+    new_password = serializers.CharField(max_length=255)
+    """新規パスワード"""
+    confirm_password = serializers.CharField(max_length=255)
+    """新規パスワード再確認"""
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError("新規パスワードと確認パスワードが違います")
+        validate_password(data["new_password"])
+        return data
+
+
+class CheckTokenSerializer(serializers.Serializer):
+    """トークンが有効であるか確認するSerializer"""
+
+    token = serializers.CharField(max_length=255)
+    """トークン"""
