@@ -150,22 +150,6 @@ def validate_password(password, user=None, password_validators=None):
     if errors:
         raise serializers.ValidationError(errors)
 
-    # if password_validators is None:
-    #     password_validators = get_default_password_validators()
-    # for validator in password_validators:
-    #     try:
-    #         validator.validate(password, user)
-    #     except ValidationError as error:
-    #         error_messages = error.message
-    #         # print(error_messages)  # エラーメッセージを確認する
-    #         # raise serializers.ValidationError(error_messages)
-    #         # return error_messages
-    # return []
-    # # print("errors", errors)
-    # # if errors:
-    # #     raise serializers.ValidationError(errors)
-
-
 class ChangePasswordSerializer(serializers.Serializer):
     """パスワード変更用Serializer"""
 
