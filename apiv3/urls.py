@@ -12,6 +12,8 @@ router.register('judges', views.JudgeViewSet, basename="Judge")
 app_name = 'apiv3'
 urlpatterns = [
     path('changepassword/', views.UserPassword.as_view()),
+    path('requestpasswordreset/', views.SendResetPasswordEmail.as_view()),
+    path('passwordreset/', views.ResetPassword.as_view()),
     path('register/', views.AuthRegister.as_view()),
     path('submit/', views.SubmitData.as_view()),
     path('submitstatus/<int:pk>/', views.SubmissionStatus.as_view()),

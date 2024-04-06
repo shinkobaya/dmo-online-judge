@@ -18,7 +18,10 @@ from judge.views.problem import (
 from judge.views.submission import group_test_cases, combine_statuses
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
-
+import logging, secrets
+from datetime import timedelta
+from .models import UserResetPassword
+from django.db import transaction, DatabaseError
 # User = get_user_model()
 
 class AuthRegister(generics.CreateAPIView):
@@ -95,6 +98,96 @@ class UserPassword(generics.GenericAPIView):
         user.save()
         # update_session_auth_hash
         return Response(status=status.HTTP_200_OK)
+
+class SendResetPasswordEmail(generics.GenericAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """パスワード変更用のトークンを発行する
+        """
+        try:
+            user = User.objects.get(
+                email=request.data["email"],
+            )
+        except User.DoesNotExist as e:
+            logging.error(e)
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not user.is_active:
+            logging.warning("ユーザは有効化済みまたは認証済みです")
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            token = secrets.token_urlsafe(64)
+            expiry = timezone.now() + timedelta(minutes=30)
+            UserResetPassword.objects.create(
+                token=token,
+                user=user,
+                expiry=expiry,
+            )
+        except DatabaseError as e:
+            logging.error(e)
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = {"token": token}
+        return Response(
+            data=data,
+            status=status.HTTP_200_OK,
+        )
+
+class ResetPassword(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """パスワード再設定用API """
+        # print("resetpassword", request.data)
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if serializer.errors:
+            print("hoge", serializer.errors)
+            return Response(
+                data=serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        reset_password = self._check_reset_password(serializer.data["token"])
+        print("test", reset_password)
+        if reset_password is None:
+            return Response(
+                data={"msg": "有効期限切れのリンクです。管理者に再送信を依頼してください。"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user = reset_password.user
+        user.set_password(serializer.data["newPassword"])
+        reset_password.is_used = True
+        reset_password.save()
+        user.save()
+        return Response(
+            data={"msg": "パスワードの再設定が完了しました"},
+            status=status.HTTP_200_OK
+        )
+
+    def _check_reset_password(self, token):
+        """パスワード再設定用トークンを確認する """
+        try:
+            reset_password = UserResetPassword.objects.select_related(
+                "user"
+            ).get(
+                token=token,
+                is_used=False,
+            )
+        except:
+            return None
+
+        if reset_password.expiry < timezone.now() or reset_password.is_used:
+            return None
+        return reset_password
+
 
 class SubmitData(generics.GenericAPIView, ProblemMixin, TitleMixin):
     # queryset = User.objects.all()

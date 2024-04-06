@@ -148,7 +148,22 @@ def validate_password(password, user=None, password_validators=None):
         except ValidationError as error:
             errors.append(error)
     if errors:
-        raise ValidationError(errors)
+        raise serializers.ValidationError(errors)
+
+    # if password_validators is None:
+    #     password_validators = get_default_password_validators()
+    # for validator in password_validators:
+    #     try:
+    #         validator.validate(password, user)
+    #     except ValidationError as error:
+    #         error_messages = error.message
+    #         # print(error_messages)  # エラーメッセージを確認する
+    #         # raise serializers.ValidationError(error_messages)
+    #         # return error_messages
+    # return []
+    # # print("errors", errors)
+    # # if errors:
+    # #     raise serializers.ValidationError(errors)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -173,15 +188,19 @@ class ResetPasswordSerializer(serializers.Serializer):
 
     token = serializers.CharField(max_length=255)
     """パスワード再設定メールURL用トークン"""
-    new_password = serializers.CharField(max_length=255)
+    newPassword = serializers.CharField(max_length=255)
     """新規パスワード"""
-    confirm_password = serializers.CharField(max_length=255)
+    confirmPassword = serializers.CharField(max_length=255)
     """新規パスワード再確認"""
 
     def validate(self, data):
-        if data["new_password"] != data["confirm_password"]:
+        if data["newPassword"] != data["confirmPassword"]:
             raise serializers.ValidationError("新規パスワードと確認パスワードが違います")
-        validate_password(data["new_password"])
+        validate_password(data["newPassword"])
+        # errors = validate_password(data["newPassword"])
+        # print("res")
+        # if errors:
+        #     raise serializers.ValidationError("複雑なパスワードを設定してください。")
         return data
 
 
