@@ -308,7 +308,7 @@ class UserDetail(generics.GenericAPIView):
         qset = Submission.objects.filter(
                 result='AC',
                 user=profile,
-                problem__is_public=True,
+                # problem__is_public=True,
                 problem__is_organization_private=False,
             ).order_by("problem")
 
