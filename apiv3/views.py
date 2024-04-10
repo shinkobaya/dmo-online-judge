@@ -78,6 +78,7 @@ class UserInfoViewSet(viewsets.ModelViewSet):
 class UserPassword(generics.GenericAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
 
     def post(self, request, format=None):
         print(request.data)
@@ -102,6 +103,7 @@ class UserPassword(generics.GenericAPIView):
 class SendResetPasswordEmail(generics.GenericAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
+    serializer_class = ChangePasswordSerializer
 
     def post(self, request):
         """パスワード変更用のトークンを発行する
@@ -142,6 +144,7 @@ class SendResetPasswordEmail(generics.GenericAPIView):
 
 class ResetPassword(generics.GenericAPIView):
     permission_classes = [AllowAny]
+    serializer_class = ResetPasswordSerializer
 
     def post(self, request):
         """パスワード再設定用API """
