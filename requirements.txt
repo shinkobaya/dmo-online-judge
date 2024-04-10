@@ -8,7 +8,7 @@ django-social-share
 django-sortedm2m>=3.1.0
 django-impersonate
 dmoj-wpadmin @ git+https://github.com/DMOJ/dmoj-wpadmin.git
-lxml
+lxml==5.1.0
 Pygments
 mistune<2
 social-auth-core==4.3.0
@@ -29,6 +29,7 @@ jsonfield @ git+https://github.com/DMOJ/jsonfield.git
 pymoss
 packaging<22
 celery
+redis
 ansi2html @ git+https://github.com/DMOJ/ansi2html.git
 sqlparse
 lupa

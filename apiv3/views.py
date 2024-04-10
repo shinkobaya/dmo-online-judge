@@ -18,20 +18,24 @@ from judge.views.problem import (
 from judge.views.submission import group_test_cases, combine_statuses
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
-
+import logging, secrets
+from datetime import timedelta
+from .models import UserResetPassword
+from django.db import transaction, DatabaseError
 # User = get_user_model()
 
 class AuthRegister(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
     queryset = Profile.objects.all()
-    serializer_class = ProfileSerializer
+    serializer_class = UserSerializer
 
     @transaction.atomic
     def post(self, request, format=None):
-        serializer = ProfileSerializer(data=request.data)
+        serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserInfoViewSet(viewsets.ModelViewSet):
@@ -71,6 +75,120 @@ class UserInfoViewSet(viewsets.ModelViewSet):
     #     projmember.delete()
     #     return Response({"status": "deleted"}, status=status.HTTP_200_OK)
 
+class UserPassword(generics.GenericAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        print(request.data)
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        if not user.check_password(
+            serializer.validated_data["oldPassword"]
+        ):
+            return Response(
+                data={"msg": "現在のパスワードが違います。"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(serializer.validated_data["newPassword"])
+        user.save()
+        # update_session_auth_hash
+        return Response(status=status.HTTP_200_OK)
+
+class SendResetPasswordEmail(generics.GenericAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """パスワード変更用のトークンを発行する
+        """
+        try:
+            user = User.objects.get(
+                email=request.data["email"],
+            )
+        except User.DoesNotExist as e:
+            logging.error(e)
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not user.is_active:
+            logging.warning("ユーザは有効化済みまたは認証済みです")
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            token = secrets.token_urlsafe(64)
+            expiry = timezone.now() + timedelta(minutes=30)
+            UserResetPassword.objects.create(
+                token=token,
+                user=user,
+                expiry=expiry,
+            )
+        except DatabaseError as e:
+            logging.error(e)
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = {"token": token}
+        return Response(
+            data=data,
+            status=status.HTTP_200_OK,
+        )
+
+class ResetPassword(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """パスワード再設定用API """
+        # print("resetpassword", request.data)
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if serializer.errors:
+            print("hoge", serializer.errors)
+            return Response(
+                data=serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        reset_password = self._check_reset_password(serializer.data["token"])
+        print("test", reset_password)
+        if reset_password is None:
+            return Response(
+                data={"msg": "有効期限切れのリンクです。管理者に再送信を依頼してください。"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user = reset_password.user
+        user.set_password(serializer.data["newPassword"])
+        reset_password.is_used = True
+        reset_password.save()
+        user.save()
+        return Response(
+            data={"msg": "パスワードの再設定が完了しました"},
+            status=status.HTTP_200_OK
+        )
+
+    def _check_reset_password(self, token):
+        """パスワード再設定用トークンを確認する """
+        try:
+            reset_password = UserResetPassword.objects.select_related(
+                "user"
+            ).get(
+                token=token,
+                is_used=False,
+            )
+        except:
+            return None
+
+        if reset_password.expiry < timezone.now() or reset_password.is_used:
+            return None
+        return reset_password
+
+
 class SubmitData(generics.GenericAPIView, ProblemMixin, TitleMixin):
     # queryset = User.objects.all()
     # serializer_class = UserSerializer
@@ -83,7 +201,7 @@ class SubmitData(generics.GenericAPIView, ProblemMixin, TitleMixin):
         #---
         if (
             not self.request.user.has_perm('judge.spam_submission') and
-            Submission.objects.filter(user=self.request.user, rejudged_date__isnull=True)
+            Submission.objects.filter(user=self.request.profile, rejudged_date__isnull=True)
                               .exclude(status__in=['D', 'IE', 'CE', 'AB']).count() >= settings.DMOJ_SUBMISSION_LIMIT
         ):
             return Response(data={"status": 'You submitted too many submissions.'},
@@ -100,10 +218,11 @@ class SubmitData(generics.GenericAPIView, ProblemMixin, TitleMixin):
 
         with transaction.atomic():
             serializer = SubmissionSerializer(data=request.data)
+            # print(request.user.profile)
             # self.new_submission.user = request.user.id
             # self.new_submission.save()
             if serializer.is_valid():
-                self.new_submission = serializer.save(user_id=request.user.id)
+                self.new_submission = serializer.save(user_id=request.user.profile.id)
                 source = SubmissionSource(submission=self.new_submission, source=request.data['source'])
                 source.save()
                 # Save a query.
@@ -142,7 +261,14 @@ class SubmissionStatus(generics.GenericAPIView):
 
             # These are individual cases.
             if batch['id'] is None:
-                cases.extend(batch_cases)
+                # cases.extend(batch_cases)
+                cases.append({
+                    'type': 'batch',
+                    'batch_id': 0,
+                    'cases': batch_cases,
+                    'points': batch_cases[0]['points'],
+                    'total': batch_cases[0]['total'],
+                })
             # This is one batch.
             else:
                 cases.append({
@@ -175,21 +301,25 @@ class SubmissionStatus(generics.GenericAPIView):
 class UserDetail(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, pk, format=None):
-        pid = self.kwargs["pk"]
-        profile = Profile.objects.get(username=pid)
+    def get(self, request, format=None):
 
-        solved_problems = list(
-            Submission.objects
-            .filter(
+        profile = Profile.objects.get(user=self.request.user)
+
+        qset = Submission.objects.filter(
                 result='AC',
                 user=profile,
-                problem__is_public=True,
+                # problem__is_public=True,
                 problem__is_organization_private=False,
-            )
-            .values('problem').distinct()
-            .values_list('problem__code', flat=True),
-        )
+            ).order_by("problem")
+
+        p = -1
+        queryset = []
+        for i in qset:
+            if p != i.problem:
+                p = i.problem
+                queryset.append(i)
+
+        solved_problems = SubmissionSerializer(queryset, many=True)
 
         last_rating = profile.ratings.order_by('-contest__end_time').first()
 
@@ -200,7 +330,7 @@ class UserDetail(generics.GenericAPIView):
                 user=profile,
                 virtual=ContestParticipation.LIVE,
                 contest__in=Contest.get_visible_contests(self.request.user),
-                contest__end_time__lt=self._now,
+                contest__end_time__lt=timezone.now(),
             )
             .order_by('contest__end_time')
         )
@@ -222,7 +352,7 @@ class UserDetail(generics.GenericAPIView):
             'points': profile.points,
             'performance_points': profile.performance_points,
             'problem_count': profile.problem_count,
-            'solved_problems': solved_problems,
+            'solved_problems': solved_problems.data,
             'rank': profile.display_rank,
             'rating': last_rating.rating if last_rating is not None else None,
             'organizations': list(profile.organizations.values_list('id', flat=True)),
