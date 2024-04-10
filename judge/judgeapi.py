@@ -77,7 +77,15 @@ def judge_submission(submission, rejudge=False, batch_rejudge=False, judge_id=No
         return False
 
     SubmissionTestCase.objects.filter(submission_id=submission.id).delete()
-
+    print({
+            'name': 'submission-request',
+            'submission-id': submission.id,
+            'problem-id': submission.problem.code,
+            'language': submission.language.key,
+            'source': submission.source.source,
+            'judge-id': judge_id,
+            'priority': BATCH_REJUDGE_PRIORITY if batch_rejudge else (REJUDGE_PRIORITY if rejudge else priority),
+    })
     try:
         response = judge_request({
             'name': 'submission-request',
@@ -93,6 +101,7 @@ def judge_submission(submission, rejudge=False, batch_rejudge=False, judge_id=No
         Submission.objects.filter(id=submission.id).update(status='IE', result='IE')
         success = False
     else:
+        print(response)
         if response['name'] != 'submission-received' or response['submission-id'] != submission.id:
             Submission.objects.filter(id=submission.id).update(status='IE', result='IE')
         _post_update_submission(submission)

@@ -17,7 +17,7 @@
             "points": 0.0,
             "problem_count": 0,
             "rating": null,
-            "timezone": "America/Toronto",
+            "timezone": "Asia/Tokyo",
             "user": 1,
             "user_script": ""
         },
@@ -167,6 +167,15 @@
             "name": "DMOJ: Modern Online Judge"
         },
         "model": "sites.site",
+        "pk": 1
+    },
+    {
+        "fields": {
+            "name": "ExampleJudge",
+            "auth_key": "-t_qBN}_zr@WF_O(j>A]9:JR,-]@FMPN38(9Y:CDD]`ZT.|dYdH03q#;cN8?5s(gvu0LeSBMy3cc;06)pF)<nX]C=.Us^{#7w!9:",
+            "created": "2021-01-01T00:00:00.000Z"
+        },
+        "model": "judge.Judge",
         "pk": 1
     }
 ]
