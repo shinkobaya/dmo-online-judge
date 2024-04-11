@@ -2,7 +2,7 @@ from rest_framework import serializers, mixins
 from django.contrib.auth import get_user_model
 from judge.models import (
     Contest, ContestParticipation, ContestTag, Judge, Language, Organization, Problem, ProblemType, Profile, Rating,
-    Submission, SubmissionTestCase
+    Submission, SubmissionTestCase, ContestProblem
 )
 from django.utils import timezone
 from django.contrib.auth.password_validation import get_default_password_validators
@@ -89,12 +89,21 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ('name', 'color', 'description')
 
 class ContestSerializer(serializers.ModelSerializer):
-    problems = ProblemSerializer(read_only=True, many=True)
+    # problems = ProblemSerializer(read_only=True, many=True)
+    problems = serializers.SerializerMethodField()
     tags = TagSerializer(read_only=True, many=True)
 
     class Meta:
         model = Contest
         fields = ('pk', 'key', 'name', 'problems', 'description', 'tags')
+
+    def get_problems(self, obj):
+        tmp = ContestProblem.objects.filter(contest_id=obj.id) \
+                .order_by('order')\
+                .values_list('problem_id', flat=True)
+        # print(tmp)
+        problems = [Problem.objects.get(id=d) for d in tmp.all()]
+        return ProblemSerializer(problems, many=True).data
 
 class SubmissionTestcaseSerializer(serializers.ModelSerializer):
 
