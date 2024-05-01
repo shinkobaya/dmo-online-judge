@@ -379,3 +379,13 @@ class JudgeViewSet(viewsets.ModelViewSet):
     queryset = Judge.objects.all()
     serializer_class = JudgeSerializer
     permission_classes = [IsAuthenticated]
+
+class SelectedProblems(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, **kwargs):
+        selected = request.data.get('selectedProblems', [])
+        instances = Problem.objects.filter(id__in=selected)
+        serializers = ProblemSerializer(instances, many=True)
+
+        return Response(serializers.data, status=status.HTTP_200_OK)

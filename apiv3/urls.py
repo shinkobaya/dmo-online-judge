@@ -18,5 +18,6 @@ urlpatterns = [
     path('submit/', views.SubmitData.as_view()),
     path('submitstatus/<int:pk>/', views.SubmissionStatus.as_view()),
     path('userstatus/', views.UserDetail.as_view()),
+    path('selectedproblems/', views.SelectedProblems.as_view()),
     path('', include(router.urls)),
 ]
