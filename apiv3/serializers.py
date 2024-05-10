@@ -101,7 +101,7 @@ class ContestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Contest
-        fields = ('pk', 'key', 'name', 'problems', 'description', 'tags')
+        fields = ('pk', 'key', 'name', 'problems', 'description', 'tags', 'time_limit')
 
     def get_problems(self, obj):
         tmp = ContestProblem.objects.filter(contest_id=obj.id) \
