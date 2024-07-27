@@ -86,7 +86,7 @@ class ProblemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Problem
-        fields = ('pk', 'code', 'name', 'description', 'allowed_languages', 'types', 'group')
+        fields = ('pk', 'code', 'name', 'description', 'allowed_languages', 'types', 'group', 'points')
 
 class TagSerializer(serializers.ModelSerializer):
 
