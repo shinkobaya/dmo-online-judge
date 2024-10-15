@@ -80,13 +80,67 @@ class ProblemGroupSerializer(serializers.ModelSerializer):
         fields = ('name', 'full_name')
 
 class ProblemSerializer(serializers.ModelSerializer):
-    allowed_languages = LanguageSerializer(read_only=True, many=True)
-    types = ProblemTypeSerializer(read_only=True, many=True)
+    allowed_languages = LanguageSerializer(many=True, read_only=True)
+    types = ProblemTypeSerializer(many=True, read_only=True)
     group = ProblemGroupSerializer(read_only=True)
+    group_id = serializers.SlugRelatedField(
+        queryset=ProblemGroup.objects.filter(), source='group', write_only=True, required=False,
+        slug_field='name')
 
     class Meta:
         model = Problem
-        fields = ('pk', 'code', 'name', 'description', 'allowed_languages', 'types', 'group', 'points')
+        fields = ('pk', 'code', 'name', 'description',
+                  'allowed_languages', 'types', 'group', 'points',
+                  'time_limit', 'memory_limit', 'group_id',)
+
+    def create(self, validated_data):
+        types = self.initial_data["types"]
+        allowed_languages = self.initial_data["allowed_languages"]
+        # print(types, allowed_languages)
+
+        typeInsts = []
+        langs = []
+
+        for t in types:
+            typeInsts.append(ProblemType.objects.get(name = t))
+
+        for l in allowed_languages:
+            langs.append(Language.objects.get(key = l))
+
+        # print(typeInsts, langs)
+        p = Problem.objects.create(**validated_data)
+        p.types.set(typeInsts)
+        p.allowed_languages.set(langs)
+        return p
+
+    def update(self, instance, validated_data):
+        instance.code = validated_data.get("code", instance.code)
+        instance.name = validated_data.get("name", instance.name)
+        instance.description = validated_data.get("description", instance.description)
+        instance.group = validated_data.get("group", instance.group)
+        instance.points = validated_data.get("points", instance.points)
+        instance.time_limit = validated_data.get("time_limit", instance.time_limit)
+        instance.memory_limit = validated_data.get("memory_limit", instance.memory_limit)
+
+        typeInsts = []
+        langs = []
+
+        types = self.initial_data["types"]
+        allowed_languages = self.initial_data["allowed_languages"]
+        # print(types, allowed_languages)
+
+        for t in types:
+            typeInsts.append(ProblemType.objects.get(name = t))
+
+        for l in allowed_languages:
+            langs.append(Language.objects.get(key = l))
+
+        instance.types.set(typeInsts)
+        instance.allowed_languages.set(langs)
+
+        instance.save()
+
+        return instance
 
 class TagSerializer(serializers.ModelSerializer):
 

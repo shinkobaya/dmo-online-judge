@@ -5,9 +5,11 @@ from . import views
 
 router = routers.DefaultRouter()
 router.register('users', views.UserInfoViewSet)
-router.register('contests', views.ContestInfoViewSet, basename="Contest")
-router.register('problems', views.ProblemViewSet, basename="Problem")
-router.register('judges', views.JudgeViewSet, basename="Judge")
+router.register('contests', views.ContestInfoViewSet, basename="contest")
+router.register('problems', views.ProblemViewSet)
+router.register('problemgroups', views.ProblemGroupViewSet, basename="problemgroup")
+router.register('problemtypes', views.ProblemTypeViewSet, basename="problemtype")
+router.register('judges', views.JudgeViewSet, basename="judge")
 
 app_name = 'apiv3'
 urlpatterns = [

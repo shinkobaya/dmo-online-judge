@@ -375,6 +375,24 @@ class ProblemViewSet(viewsets.ModelViewSet):
     serializer_class = ProblemSerializer
     permission_classes = [IsAuthenticated]
 
+    def list(self, request):
+        group = request.query_params["group"]
+        typename = request.query_params["types"]
+        # print(group, typename)
+        queryset = Problem.objects.filter(
+            group__name=group, types__name__contains=typename
+        )
+        serializer = ProblemSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        print(f"Request method: {request.method}")
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        print(f"Request method: {request.method}")
+        return super().partial_update(request, *args, **kwargs)
+
 class JudgeViewSet(viewsets.ModelViewSet):
     queryset = Judge.objects.all()
     serializer_class = JudgeSerializer
@@ -389,3 +407,13 @@ class SelectedProblems(generics.GenericAPIView):
         serializers = ProblemSerializer(instances, many=True)
 
         return Response(serializers.data, status=status.HTTP_200_OK)
+
+class ProblemGroupViewSet(viewsets.ModelViewSet):
+    queryset = ProblemGroup.objects.all()
+    serializer_class = ProblemGroupSerializer
+    permission_classes = [IsAuthenticated]
+
+class ProblemTypeViewSet(viewsets.ModelViewSet):
+    queryset = ProblemType.objects.all()
+    serializer_class = ProblemTypeSerializer
+    permission_classes = [IsAuthenticated]
